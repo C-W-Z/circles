@@ -1,4 +1,6 @@
 const CANVAS = {w: 400, h: 400};
+const CRadius = 175;
+const BRadius = 10;
 const R = window.devicePixelRatio;
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
 const context = canvas.getContext('2d');
@@ -46,23 +48,23 @@ class GAME {
 		if (scoreTxt) scoreTxt.innerText = String(this.score);
 	}
 	static drawBigCircle() {
-		drawCircle(canvas.width/2, canvas.height/2, 160, null, 'white');
-		drawCircle(canvas.width/2, canvas.height/2, 140, null, 'white');
+		drawCircle(canvas.width/2, canvas.height/2, CRadius + BRadius, null, 'white');
+		drawCircle(canvas.width/2, canvas.height/2, CRadius - BRadius, null, 'white');
 	}
 }
 
 class BALL {
-	private radius = 10;
+	private radius = BRadius;
 	public startDEG = 0;
 	public speed = 0.1;
 	public clockwise = true;
 	public startTime = 0;
 	constructor() {}
 	static XOnCircleClockWise(rad:number) {
-		return canvas.width/2 + Math.sin(rad) * 150 * R;
+		return canvas.width/2 + Math.sin(rad) * CRadius * R;
 	}
 	static YOnCircleClockWise(rad:number) {
-		return canvas.height/2 - Math.cos(rad) * 150 * R;
+		return canvas.height/2 - Math.cos(rad) * CRadius * R;
 	}
 	startRotate() {
 		this.startTime = performance.now();
@@ -75,7 +77,7 @@ class BALL {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
 		const x = BALL.XOnCircleClockWise(rad) - (canvas.width / 2);
 		const y = BALL.YOnCircleClockWise(rad) - (canvas.height / 2);
-		const r = Math.acos(-y/150/R) * 180 / Math.PI;
+		const r = Math.acos(-y/CRadius/R) * 180 / Math.PI;
 		;this.startDEG = (x >= 0) ? r: 360 - r;
 		this.startRotate();
 		this.clockwise = !this.clockwise;
@@ -88,20 +90,25 @@ window.onload = function () {
 	GAME.drawBigCircle();
 	ball.push(new BALL());
 
-	if (startBtn) startBtn.onclick = function (e) {
-		startBtn.classList.add('hide');
-		ball[0].startRotate();
-		animate(performance.now());
-	}
-
-	document.onkeydown = function (e) {
-
-	};
+	if (startBtn) startBtn.onclick = startGame;
+	document.onkeydown = press;
 }
 
 function animate(time:number) {
 	context?.clearRect(0, 0, canvas.width, canvas.height);
 	GAME.drawBigCircle();
-	ball[0].draw(time);
+	for (let i = 0; i < ball.length; i++)
+		ball[i].draw(time);
 	requestAnimationFrame(animate);
+}
+
+function startGame() {
+	startBtn?.classList.add('hide');
+	for (let i = 0; i < ball.length; i++)
+		ball[i].startRotate();
+	animate(performance.now());
+}
+
+function press() {
+	
 }
