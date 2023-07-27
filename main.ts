@@ -13,12 +13,13 @@ function setCanvasSize() {
 	canvas.height = CANVAS.h * R;
 	canvas.style.width = CANVAS.w + 'px';
 	canvas.style.height = CANVAS.h + 'px';
+	context?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 }
 
 function drawCircle(x:number, y:number, r:number, fillStyle:string|null=null, strokeStyle:string|null=null, strokeWidth:number=2) {
 	if (!context) return;
 	context?.beginPath();
-	context?.arc(x, y, r * R, 0, 2 * Math.PI);
+	context?.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
 	if (fillStyle) {
 		context.fillStyle = fillStyle;
 		context.fill();
@@ -56,14 +57,14 @@ class Circle {
 		this.radius = radius;
 	}
 	draw() {
-		drawCircle(canvas.width/2, canvas.height/2, this.radius + BRadius, null, 'white');
-		drawCircle(canvas.width/2, canvas.height/2, this.radius - BRadius, null, 'white');
+		drawCircle(0, 0, this.radius + BRadius, null, 'white');
+		drawCircle(0, 0, this.radius - BRadius, null, 'white');
 	}
 	static clockWiseX(radius:number, rad:number) {
-		return canvas.width/2 + Math.sin(rad) * radius * R;
+		return Math.sin(rad) * radius;
 	}
 	static clockWiseY(radius:number, rad:number) {
-		return canvas.height/2 - Math.cos(rad) * radius * R;
+		return -Math.cos(rad) * radius;
 	}
 }
 
@@ -77,13 +78,12 @@ class Line {
 	draw() {
 		if (!context) return;
 		context.beginPath();
-		context.translate(canvas.width/2, canvas.height/2);
 		context.rotate((this.degree - 90) * Math.PI / 180);
 		const w = BRadius * R, h = BRadius * 2 * R;
 		context.rect(this.radius * R - h/2, -w/2, h, w);
 		context.fillStyle = 'white';
 		context.fill();
-		context.setTransform(1, 0, 0, 1, 0, 0);
+		context.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 	}
 }
 
@@ -108,9 +108,9 @@ class Ball {
 	}
 	reverseDir(time:number=performance.now()) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
-		const x = Circle.clockWiseX(this.outRadius, rad) - (canvas.width / 2);
-		const y = Circle.clockWiseY(this.outRadius, rad) - (canvas.height / 2);
-		const r = Math.acos(-y/this.outRadius/R) * 180 / Math.PI;
+		const x = Circle.clockWiseX(this.outRadius, rad);
+		const y = Circle.clockWiseY(this.outRadius, rad);
+		const r = Math.acos(-y/this.outRadius) * 180 / Math.PI;
 		;this.startDEG = (x >= 0) ? r: 360 - r;
 		this.startRotate();
 		this.clockwise = !this.clockwise;
@@ -141,7 +141,7 @@ window.onload = function () {
 
 function animate(time:number) {
 	if (game.active) {
-		context?.clearRect(0, 0, canvas.width, canvas.height);
+		context?.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
 		for (let i = 0; i < circle.length; i++)
 			circle[i].draw();
 		for (let i = 0; i < line.length; i++)
