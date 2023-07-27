@@ -1,5 +1,5 @@
 const CANVAS = {w: 400, h: 400};
-const CRadius = 175;
+const CRadius = [175, 155, 135];
 const BRadius = 10;
 const R = window.devicePixelRatio;
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
@@ -31,8 +31,8 @@ function drawCircle(x:number, y:number, r:number, fillStyle:string|null=null, st
 }
 
 
-class GAME {
-	private active:boolean = false;
+class Game {
+	public active:boolean = false;
 	public score:number = 0;
 	public highest:number = 0;
 	constructor() {}
@@ -47,58 +47,108 @@ class GAME {
 		this.score += 1;
 		if (scoreTxt) scoreTxt.innerText = String(this.score);
 	}
-	static drawBigCircle() {
-		drawCircle(canvas.width/2, canvas.height/2, CRadius + BRadius, null, 'white');
-		drawCircle(canvas.width/2, canvas.height/2, CRadius - BRadius, null, 'white');
+}
+
+class Circle {
+	public radius:number;
+	public ball:Ball[] = new Array();
+	constructor(radius:number) {
+		this.radius = radius;
+	}
+	draw() {
+		drawCircle(canvas.width/2, canvas.height/2, this.radius + BRadius, null, 'white');
+		drawCircle(canvas.width/2, canvas.height/2, this.radius - BRadius, null, 'white');
+	}
+	static clockWiseX(radius:number, rad:number) {
+		return canvas.width/2 + Math.sin(rad) * radius * R;
+	}
+	static clockWiseY(radius:number, rad:number) {
+		return canvas.height/2 - Math.cos(rad) * radius * R;
 	}
 }
 
-class BALL {
-	private radius = BRadius;
+class Line {
+	public radius:number;
+	public degree:number;
+	constructor(radius:number, degree:number) {
+		this.radius = radius;
+		this.degree = degree;
+	}
+	draw() {
+		if (!context) return;
+		context.beginPath();
+		context.translate(canvas.width/2, canvas.height/2);
+		context.rotate((this.degree - 90) * Math.PI / 180);
+		const w = BRadius * R, h = BRadius * 2 * R;
+		context.rect(this.radius * R - h/2, -w/2, h, w);
+		context.fillStyle = 'white';
+		context.fill();
+		context.setTransform(1, 0, 0, 1, 0, 0);
+	}
+}
+
+class Ball {
+	public outRadius:number;
 	public startDEG = 0;
 	public speed = 0.1;
 	public clockwise = true;
 	public startTime = 0;
-	constructor() {}
-	static XOnCircleClockWise(rad:number) {
-		return canvas.width/2 + Math.sin(rad) * CRadius * R;
-	}
-	static YOnCircleClockWise(rad:number) {
-		return canvas.height/2 - Math.cos(rad) * CRadius * R;
+	constructor(radius:number, startDeg:number, speed:number, cloclwise:boolean) {
+		this.outRadius = radius;
+		this.startDEG = startDeg;
+		this.speed = speed;
+		this.clockwise = cloclwise;
 	}
 	startRotate() {
 		this.startTime = performance.now();
 	}
 	draw(time:number) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
-		drawCircle(BALL.XOnCircleClockWise(rad), BALL.YOnCircleClockWise(rad), this.radius, 'white');
+		drawCircle(Circle.clockWiseX(this.outRadius, rad), Circle.clockWiseY(this.outRadius, rad), BRadius, 'white');
 	}
 	reverseDir(time:number=performance.now()) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
-		const x = BALL.XOnCircleClockWise(rad) - (canvas.width / 2);
-		const y = BALL.YOnCircleClockWise(rad) - (canvas.height / 2);
-		const r = Math.acos(-y/CRadius/R) * 180 / Math.PI;
+		const x = Circle.clockWiseX(this.outRadius, rad) - (canvas.width / 2);
+		const y = Circle.clockWiseY(this.outRadius, rad) - (canvas.height / 2);
+		const r = Math.acos(-y/this.outRadius/R) * 180 / Math.PI;
 		;this.startDEG = (x >= 0) ? r: 360 - r;
 		this.startRotate();
 		this.clockwise = !this.clockwise;
 	}
 }
 
-let ball = new Array();
+const game = new Game();
+const circle = new Array();
+const line = new Array();
+const ball = new Array();
 window.onload = function () {
 	setCanvasSize();
-	GAME.drawBigCircle();
-	ball.push(new BALL());
+	circle.push(new Circle(CRadius[0]));
+	line.push(new Line(CRadius[0], 0));
+	ball.push(new Ball(CRadius[0], Math.random() * 360, 0.2, true));
+	circle.push(new Circle(CRadius[1]));
+	ball.push(new Ball(CRadius[1], Math.random() * 360, 0.15, false));
+	circle.push(new Circle(CRadius[2]));
+	ball.push(new Ball(CRadius[2], Math.random() * 360, 0.1, true));
+	for (let i = 0; i < circle.length; i++)
+		circle[i].draw();
 
 	if (startBtn) startBtn.onclick = startGame;
 	document.onkeydown = press;
+
+	animate(performance.now());
 }
 
 function animate(time:number) {
-	context?.clearRect(0, 0, canvas.width, canvas.height);
-	GAME.drawBigCircle();
-	for (let i = 0; i < ball.length; i++)
-		ball[i].draw(time);
+	if (game.active) {
+		context?.clearRect(0, 0, canvas.width, canvas.height);
+		for (let i = 0; i < circle.length; i++)
+			circle[i].draw();
+		for (let i = 0; i < line.length; i++)
+			line[i].draw();
+		for (let i = 0; i < ball.length; i++)
+			ball[i].draw(time);
+	}
 	requestAnimationFrame(animate);
 }
 
@@ -106,7 +156,7 @@ function startGame() {
 	startBtn?.classList.add('hide');
 	for (let i = 0; i < ball.length; i++)
 		ball[i].startRotate();
-	animate(performance.now());
+	game.start();
 }
 
 function press() {
