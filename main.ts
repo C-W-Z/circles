@@ -9,7 +9,7 @@ const CRadius = [175, 155, 135, 115, 95, 75, 55, 35, 15];
 const BRadius:number = 10;
 const LWidth:number = 10;
 const MinBBGap:number = 9; // deg
-const MinBLGap:number = 60;  // deg
+const MinBLGap:number = 45;  // deg
 const R:number = window.devicePixelRatio;
 const canvasBack = <HTMLCanvasElement>document.getElementById('canvas-back');
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
@@ -90,7 +90,7 @@ class Game {
 	static stageBall = [10,25,45,65,85,100,120,140,160,180,Infinity];
 	// circleNum[level][stage]
 	static circleNum = [
-		[1,1,1,1,2,2,2,2,3,3,3],
+		[1,1,1,1,1,1,1,1,1,1,1],
 		[1,1,1,1,2,2,2,3,3,3,4],
 		[1,1,1,2,2,2,3,3,3,4,5],
 		[2,2,3,3,4,4,5,5,6,6,6]
@@ -101,16 +101,16 @@ class Game {
 	}
 	// maxBall[level][stage][circleID]
 	static maxBall = [
-		[[1],[2],[3],[5],[2,1],[3,1],[3,2],[3,3],[2,1,1],[3,2,1],[3,3,3]],
+		[[1],[2],[3],[4],[4],[5],[5],[6],[6],[7],[7]],
 		[[2],[3],[5],[6],[2,1],[3,2],[4,3],[2,2,1],[3,2,2],[3,3,3],[4,3,2,1]],
 		[[3],[4],[5],[2,2],[3,2],[4,3],[3,2,1],[3,3,3],[4,4,3],[4,3,2,1],[5,4,3,2,1]],
-		[[3,2],[4,2],[4,3,2],[5,3,3],[5,4,3,1],[6,4,3,2],[5,4,3,2,1],[5,4,3,2,1],[6,5,4,3,2,1],[6,5,4,3,2,1],[6,5,4,3,2,1]]
+		[[3,2],[4,2],[4,3,2],[5,3,3],[5,4,3,1],[6,4,3,2],[5,4,3,2,1],[5,4,3,2,1],[6,5,4,3,2,1],[6,5,4,3,2,1],[7,6,5,4,3,2]]
 	];
 	// speeds[level][stage][circleID]
 	static speeds = [
-		[[5],[7.5],[10],[12],[5,3],[5,4],[6,5],[7,6],[5,4,3],[6,5,4],[9,8,7]],
-		[[6],[9],[12],[15],[6,4],[6.5,5],[7,6],[5,4,3],[6,5,4],[7,6,5],[7,6,5,4]],
-		[[7],[12],[16.5],[6.5,5],[8,6],[9,7],[6,5,4],[7,6,5],[8,7,6],[7,6,5,4],[8,7,6,5]],
+		[[5],[7.5],[9],[11],[13],[14],[15],[16],[17],[18],[20]],
+		[[7],[9],[12],[15],[6,4],[6.5,5],[7,6],[5,4,3],[6,5,4],[7,6,5],[7,6,5,4]],
+		[[9],[11],[15],[7,5],[8,6],[9,7],[7,5,4],[8,6,5],[9,7,6.5],[8,7,6,5],[9,7.5,6.5,5.5,5]],
 		[[5,4],[7,6],[7.5,7,6],[7,6.5,6],[8,7.5,7,6.5],[8.5,8,8.5,7],[9,8.5,8,7.5,7],[10,9,8,7,6],[9,8,7,6,5,4],[10,9,8,7,6,5],[10,9,8,7,6,5]]
 	];
 
@@ -172,27 +172,10 @@ class Game {
 	}
 
 	static scoreFunc() {
-		if (Game.level === LV.easy)
-			return circle.length;
-		if (Game.level === LV.normal) {
-			let res = 0;
-			for (const c of circle)
-				res += c.ball.length;
-			return res * circle.length;
-		}
-		if (Game.level === LV.hard) {
-			let res = 0;
-			for (const c of circle) 
-				res += c.ball.length;
-			return res * circle.length * (Game.stage + 1);
-		}
-		if (Game.level === LV.insane) {
-			let res = 1;
-			for (const c of circle) 
-				res *= Math.max(c.ball.length, 1);
-			return res * circle.length * (Game.stage + 1);
-		}
-		return 1;
+		let res = 1;
+		for (const c of circle) 
+			res *= Math.max(c.ball.length, 1);
+		return res * circle.length * (Game.stage + 1);
 	}
 
 	static getScore() {
@@ -240,12 +223,16 @@ class Circle {
 		this.clockwise = !this.clockwise;
 		const num = Math.floor(randRange(1, this.maxBall));
 		let degs = new Array();
+		spawnLoop:
 		for (let i = 0; i < num; i++) {
 			let degree = 0;
+			let time = 0;
 			rollLoop: while (true) {
+				time++;
+				if (time > 10) break spawnLoop;
 				degree = randRange(this.line.degree + MinBLGap, this.line.degree + 360 - MinBLGap) % 360;
 				for (let d = 0; d < degs.length; d++)
-					if (degree + MinBBGap > degs[d] && degree - MinBBGap < degs[d])
+					if (degree + (MinBBGap + this.speed * 50) > degs[d] && degree - (MinBBGap + this.speed * 50) < degs[d])
 							continue rollLoop;
 				break rollLoop;
 			}
