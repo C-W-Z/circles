@@ -405,8 +405,10 @@ function setControl() {
 	if (startBtn.hard)   startBtn.hard.onclick   = () => Game.start(LV.hard);
 	if (startBtn.insane) startBtn.insane.onclick = () => Game.start(LV.insane);
 
-	document.onkeydown   = () => {Game.pressed = true;};
-	document.onmousedown = () => {Game.pressed = true;};
-	document.onkeyup     = () => {Game.pressed = false;};
-	document.onmouseup   = () => {Game.pressed = false;};
+	document.onkeydown    = () => {Game.pressed = true;};
+	document.onmousedown  = () => {Game.pressed = true;};
+	document.ontouchstart = () => {Game.pressed = true;};
+	document.onkeyup      = () => {Game.pressed = false;};
+	document.onmouseup    = () => {Game.pressed = false;};
+	document.ontouchend   = () => {Game.pressed = false;};
 }
