@@ -125,3 +125,10 @@ canvas {
     right: 0;
     opacity: 1;
 }
+
+a {
+    margin: 5px;
+    color: var(--txt-clr);
+    text-decoration: none;
+    text-align: center;
+}
