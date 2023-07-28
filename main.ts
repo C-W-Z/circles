@@ -24,6 +24,8 @@ let circle:Circle[] = new Array();
 const fadedBall:Ball[] = new Array();
 const fadeTime = 500; // ms
 
+let auto = false;
+
 function setCanvasSize() {
 	canvasBack.width = canvas.width = CANVAS_SIZE * R;
 	canvasBack.height = canvas.height = CANVAS_SIZE * R;
@@ -109,24 +111,24 @@ class Game {
 	constructor() {}
 
 	static start(lvl:LV) {
-		this.active = true;
+		Game.active = true;
 		startBtns?.classList.add('hide');
 		expTxt?.classList.remove('hide');
 		if (scoreTxt) scoreTxt.innerText = '0';
 
-		this.level = lvl;
-		this.passedBall = 0;
-		this.score = 0;
-		this.stage = -1;
+		Game.level = lvl;
+		Game.passedBall = 0;
+		Game.score = 0;
+		Game.stage = -1;
 
-		this.nextStage();
+		Game.nextStage();
 
 		animate(performance.now());
 	}
 	static nextStage() {
-		if (this.stage >= this.stageBall.length - 1)
+		if (Game.stage >= Game.stageBall.length - 1)
 			return;
-		this.stage += 1;
+		Game.stage += 1;
 		circle = new Array(Game.circleNum[Game.level][Game.stage]);
 		for (let i = 0; i < Game.circleNum[Game.level][Game.stage]; i++) {
 			circle[i] = new Circle(CRadius[i], Game.speeds[Game.level][Game.stage][i], Game.maxBall[Game.level][Game.stage][i]);
@@ -142,10 +144,10 @@ class Game {
 	}
 
 	static end() {
-		this.active = false;
+		Game.active = false;
 		startBtns?.classList.remove('hide');
 		expTxt?.classList.add('hide');
-		localStorage.setItem('Highest', String(this.highest));
+		localStorage.setItem('Highest', String(Game.highest));
 	}
 	
 	static checkEnd() {
@@ -155,48 +157,48 @@ class Game {
 				Game.hasCollide = false;
 			} else Game.end();
 		}
-		if (this.passedBall >= this.stageBall[this.stage]) {
+		if (Game.passedBall >= Game.stageBall[Game.stage]) {
 			for (const c of circle)
 				if (c.ball.length > 0)
 					return;
-			this.nextStage();
+			Game.nextStage();
 		}
 	}
 
 	static scoreFunc() {
-		if (this.level === LV.easy)
+		if (Game.level === LV.easy)
 			return circle.length;
-		if (this.level === LV.normal) {
+		if (Game.level === LV.normal) {
 			let res = 0;
-			for (const c of circle) 
+			for (const c of circle)
 				res += c.ball.length;
 			return res * circle.length;
 		}
-		if (this.level === LV.hard) {
+		if (Game.level === LV.hard) {
 			let res = 0;
 			for (const c of circle) 
 				res += c.ball.length;
-			return res * circle.length * (this.stage + 1);
+			return res * circle.length * (Game.stage + 1);
 		}
-		if (this.level === LV.insane) {
+		if (Game.level === LV.insane) {
 			let res = 1;
 			for (const c of circle) 
-				res *= c.ball.length;
-			return res * circle.length * (this.stage + 1);
+				res *= Math.max(c.ball.length, 1);
+			return res * circle.length * (Game.stage + 1);
 		}
 		return 1;
 	}
 
 	static getScore() {
-		this.passedBall += 1;
-		this.score += Game.scoreFunc();
+		Game.passedBall += 1;
+		Game.score += Game.scoreFunc();
 		if (scoreTxt) {
-			scoreTxt.innerText = String(this.score);
-			if (this.score > this.highest) {
-				this.highest = this.score;
+			scoreTxt.innerText = String(Game.score);
+			if (Game.score > Game.highest) {
+				Game.highest = Game.score;
 				if (highestTxt)
-					highestTxt.innerText = String(this.highest);
-				localStorage.setItem('Highest', String(this.highest));
+					highestTxt.innerText = String(Game.highest);
+				localStorage.setItem('Highest', String(Game.highest));
 			}
 		}
 	}
@@ -246,7 +248,7 @@ class Circle {
 		}
 	}
 	detectLineBallCollide() {
-		if (this.ball.length == 0) {
+		if (this.ball.length == 0 && Game.passedBall < Game.stageBall[Game.stage]) {
 			this.spawnBalls();
 			return;
 		}
@@ -255,7 +257,7 @@ class Circle {
 			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2, b.x, b.y, BRadius)) {
 				b.collideLine.now = true;
 				Game.hasCollide = true;
-				if (Game.pressed) {
+				if (auto || Game.pressed) {
 					Game.getScore();
 					b.startFade();
 					this.ball = removeItem(this.ball, b);
