@@ -1,5 +1,5 @@
 const CANVAS = {w: 400, h: 400};
-const CRadius = [175, 155, 135];
+const CRadius = [175, 155, 135, 115, 95, 75, 55, 35, 15];
 const BRadius:number = 10;
 const LWidth:number = 10;
 const MinBBGap:number = 9; // deg
@@ -18,7 +18,7 @@ const startBtn = {
 const scoreTxt = document.getElementById('current-score');
 const highestTxt = document.getElementById('highest-score');
 
-const circle:Circle[] = new Array();
+let circle:Circle[] = new Array();
 const fadedBall:Ball[] = new Array();
 const fadeTime = 500; // ms
 
@@ -78,34 +78,31 @@ class Game {
 	
 	static level = LV.easy;
 	static stage = 0;
-	static stageBall = [10, 25, 45, 70, 100, Infinity];
+	static stageBall = [10,25,45,65,85,100,120,140,160,180,Infinity];
 	// circleNum[level][stage]
 	static circleNum = [
-		[1, 1, 1, 1, 2, 2],
-		[1, 1, 1, 1, 2, 2],
-		[1, 1, 1, 2, 2, 3],
-		[2, 2, 3, 3, 3, 3]
+		[1,1,1,1,2,2,2,2,3,3,3],
+		[1,1,1,1,2,2,2,3,3,3,4],
+		[1,1,1,2,2,2,3,3,3,4,5],
+		[2,2,3,3,4,4,5,5,6,6,6]
 	];
 	// circleDeg[circleNum][circleID]
-	static circleDeg = [
-		[],
-		[0],
-		[0, 180],
-		[0, 120, 240]
-	];
+	static circleDeg(circleNum:number,i:number) {
+		return 360 * i / circleNum;
+	}
 	// maxBall[level][stage][circleID]
 	static maxBall = [
-		[[1], [2], [3], [5], [2, 1], [3, 2]],
-		[[2], [3], [5], [6], [2, 1], [4, 3]],
-		[[3], [4], [5], [2, 2], [3, 2], [3, 2, 1]],
-		[[3, 2], [4, 2], [4, 3, 2], [5, 3, 3], [5, 5, 3], [5, 5, 5]],
+		[[1],[2],[3],[5],[2,1],[3,1],[3,2],[3,3],[2,1,1],[3,2,1],[3,3,3]],
+		[[2],[3],[5],[6],[2,1],[3,2],[4,3],[2,2,1],[3,2,2],[3,3,3],[4,3,2,1]],
+		[[3],[4],[5],[2,2],[3,2],[4,3],[3,2,1],[3,3,3],[4,4,3],[4,3,2,1],[5,4,3,2,1]],
+		[[3,2],[4,2],[4,3,2],[5,3,3],[5,4,3,1],[6,4,3,2],[5,4,3,2,1],[5,4,3,2,1],[6,5,4,3,2,1],[6,5,4,3,2,1],[6,5,4,3,2,1]]
 	];
 	// speeds[level][stage][circleID]
 	static speeds = [
-		[[0.05]      , [0.075]     , [0.1]             , [0.12]           , [0.075, 0.05]    , [0.9, 0.07]       ],
-		[[0.06]      , [0.09]      , [0.12]            , [0.15]           , [0.1, 0.08]      , [0.12, 0.1]       ],
-		[[0.07]      , [0.12]      , [0.175]           , [0.09, 0.08]     , [0.11, 0.09]     , [0.1, 0.09, 0.08] ],
-		[[0.05, 0.04], [0.08, 0.07], [0.08, 0.07, 0.06], [0.1, 0.09, 0.08], [0.15, 0.12, 0.1], [0.15, 0.14, 0.13]]
+		[[5],[7.5],[10],[12],[5,3],[5,4],[6,5],[7,6],[5,4,3],[6,5,4],[9,8,7]],
+		[[6],[9],[12],[15],[6,4],[6.5,5],[7,6],[5,4,3],[6,5,4],[7,6,5],[7,6,5,4]],
+		[[7],[12],[16.5],[6.5,5],[8,6],[9,7],[6,5,4],[7,6,5],[8,7,6],[7,6,5,4],[8,7,6,5]],
+		[[5,4],[7,6],[7.5,7,6],[7,6.5,6],[8,7.5,7,6.5],[8.5,8,8.5,7],[9,8.5,8,7.5,7],[10,9,8,7,6],[9,8,7,6,5,4],[10,9,8,7,6,5],[10,9,8,7,6,5]]
 	];
 
 	constructor() {}
@@ -122,14 +119,17 @@ class Game {
 		this.stage = -1;
 
 		this.nextStage();
+
+		animate(performance.now());
 	}
 	static nextStage() {
+		if (this.stage >= this.stageBall.length - 1)
+			return;
 		this.stage += 1;
-		while (circle.length > 0)
-			circle.pop();
-		for (let i = 0; i < this.circleNum[this.level][this.stage]; i++) {
-			circle.push(new Circle(CRadius[i], this.speeds[this.level][this.stage][i], this.maxBall[this.level][this.stage][i]));
-			circle[i].createLine(this.circleDeg[this.circleNum[this.level][this.stage]][i]);
+		circle = new Array(Game.circleNum[Game.level][Game.stage]);
+		for (let i = 0; i < Game.circleNum[Game.level][Game.stage]; i++) {
+			circle[i] = new Circle(CRadius[i], Game.speeds[Game.level][Game.stage][i], Game.maxBall[Game.level][Game.stage][i]);
+			circle[i].createLine(Game.circleDeg(Game.circleNum[Game.level][Game.stage], i));
 			circle[i].spawnBalls();
 		}
 	}
@@ -197,14 +197,14 @@ class Game {
 
 class Circle {
 	public radius:number;
-	public line:Line[] = new Array();
+	public line:Line|null=null;
 	public ball:Ball[] = new Array();
 	public speed = 0.05;
 	public maxBall = 2;
 	private clockwise = Boolean(Math.floor(Math.random() * 2));
 	constructor(radius:number, speed:number=0.05, maxBall:number=2) {
 		this.radius = radius;
-		this.speed = speed;
+		this.speed = speed / 100;
 		this.maxBall = maxBall;
 	}
 	draw() {
@@ -218,52 +218,50 @@ class Circle {
 		return -Math.cos(rad) * radius;
 	}
 	createLine(degree:number) {
-		this.line.push(new Line(this.radius, degree));
+		this.line = new Line(this.radius, degree);
 	}
 	spawnBalls() {
+		if (this.line === null) return;
 		this.clockwise = !this.clockwise;
 		const num = Math.floor(randRange(1, this.maxBall));
 		let degs = new Array();
-		if (this.line.length == 1)
-			for (let i = 0; i < num; i++) {
-				let degree = 0;
-				rollLoop: while (true) {
-					degree = randRange(MinBBGap/2, 360-MinBBGap/2);
-					if (degree < this.line[0].degree + MinBLGap || degree > this.line[0].degree + 360 - MinBLGap)
-						continue rollLoop;
-					for (let d = 0; d < degs.length; d++)
-						if (degree + MinBBGap > degs[d] && degree - MinBBGap < degs[d])
-								continue rollLoop;
-					break rollLoop;
-				}
-				degs.push(degree);
-				this.ball.push(new Ball(this.radius, degree, this.speed, this.clockwise));
+		for (let i = 0; i < num; i++) {
+			let degree = 0;
+			rollLoop: while (true) {
+				degree = randRange(this.line.degree + MinBLGap, this.line.degree + 360 - MinBLGap) % 360;
+				for (let d = 0; d < degs.length; d++)
+					if (degree + MinBBGap > degs[d] && degree - MinBBGap < degs[d])
+							continue rollLoop;
+				break rollLoop;
 			}
+			degs.push(degree);
+			this.ball.push(new Ball(this.radius, degree, this.speed, this.clockwise));
+		}
 	}
 	detectLineBallCollide() {
 		if (this.ball.length == 0) {
 			this.spawnBalls();
 			return;
 		}
-		for (const l of this.line)
-			for (const b of this.ball) {
-				if (circleCirlceCollision(l.x, l.y, LWidth / 2, b.x, b.y, BRadius)) {
-					b.collideLine.now = true;
-					Game.hasCollide = true;
-					if (Game.pressed) {
-						Game.getScore();
-						b.startFade();
-						this.ball = removeItem(this.ball, b);
-					}
-				} else {
-					b.collideLine.now = false;
+		if (this.line === null) return;
+		for (const b of this.ball) {
+			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2, b.x, b.y, BRadius)) {
+				b.collideLine.now = true;
+				Game.hasCollide = true;
+				if (Game.pressed) {
+					Game.getScore();
+					b.startFade();
+					this.ball = removeItem(this.ball, b);
 				}
-				if (b.collideLine.last && !b.collideLine.now) {
-					/* end game */
-					Game.end();
-				}
-				b.collideLine.last = b.collideLine.now;
+			} else {
+				b.collideLine.now = false;
 			}
+			if (b.collideLine.last && !b.collideLine.now) {
+				/* end game */
+				Game.end();
+			}
+			b.collideLine.last = b.collideLine.now;
+		}
 	}
 	detectBallBallCollide() {
 		for (const a of this.ball)
@@ -358,12 +356,11 @@ window.onload = function () {
 	circle[0].createLine(0);
 	for (const c of circle) {
 		c.draw();
-		for (const l of c.line) l.draw();
+		c.line?.draw();
 	}
 	setControl();
 	Game.highest = Number(localStorage.getItem('Highest'));
 	if (highestTxt) highestTxt.innerText = String(Game.highest);
-	animate(performance.now());
 }
 
 function animate(time:number) {
@@ -373,14 +370,14 @@ function animate(time:number) {
 			c.draw();
 			// c.detectBallBallCollide();
 			c.detectLineBallCollide();
-			for (const l of c.line) l.draw();
+			c.line?.draw();
 			for (const b of c.ball) b.draw(time);
 		}
 		for (const b of fadedBall)
 			b.fade(time);
 		Game.checkEnd();
+		requestAnimationFrame(animate);
 	}
-	requestAnimationFrame(animate);
 }
 
 
