@@ -264,8 +264,8 @@ class Circle {
 				b.collideLine.now = false;
 			}
 			if (b.collideLine.last && !b.collideLine.now) {
-				/* end game */
 				Game.end();
+				b.drawRed();
 			}
 			b.collideLine.last = b.collideLine.now;
 		}
@@ -354,6 +354,10 @@ class Ball {
 	startFade() {
 		fadedBall.push(this);
 		this.startTime = performance.now();
+	}
+
+	drawRed() {
+		requestAnimationFrame(()=>drawCircle(context, this.x, this.y, BRadius, 'red'));
 	}
 }
 
