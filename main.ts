@@ -1,3 +1,9 @@
+/**
+ * CIRCLES
+ * repo: https://github.com/C-W-Z/circles
+ * copyright (c) 2023 C-W-Z
+ * CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/)
+ */
 const CANVAS_SIZE = 400;
 const CRadius = [175, 155, 135, 115, 95, 75, 55, 35, 15];
 const BRadius:number = 10;
