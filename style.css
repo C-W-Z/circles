@@ -34,9 +34,17 @@ main {
 	justify-content: center;
 }
 
+#canvases {
+    position: relative;
+    width: 350px;
+	height: 350px;
+}
 canvas {
 	width: 350px;
 	height: 350px;
+    position: absolute;
+    left: 0;
+    top: 0;
 }
 
 #scores {

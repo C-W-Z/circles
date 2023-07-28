@@ -1,11 +1,13 @@
-const CANVAS = {w: 400, h: 400};
+const CANVAS_SIZE = 400;
 const CRadius = [175, 155, 135, 115, 95, 75, 55, 35, 15];
 const BRadius:number = 10;
 const LWidth:number = 10;
 const MinBBGap:number = 9; // deg
 const MinBLGap:number = 60;  // deg
 const R:number = window.devicePixelRatio;
+const canvasBack = <HTMLCanvasElement>document.getElementById('canvas-back');
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
+const contextBack = canvasBack.getContext('2d');
 const context = canvas.getContext('2d');
 const expTxt = document.getElementById('explain');
 const startBtns = document.getElementById('btns');
@@ -23,25 +25,24 @@ const fadedBall:Ball[] = new Array();
 const fadeTime = 500; // ms
 
 function setCanvasSize() {
-	canvas.width = CANVAS.w * R;
-	canvas.height = CANVAS.h * R;
-	//canvas.style.width = CANVAS.w + 'px';
-	//canvas.style.height = CANVAS.h + 'px';
+	canvasBack.width = canvas.width = CANVAS_SIZE * R;
+	canvasBack.height = canvas.height = CANVAS_SIZE * R;
 	context?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
+	contextBack?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 }
 
-function drawCircle(x:number, y:number, r:number, fillStyle:string|null=null, strokeStyle:string|null=null, strokeWidth:number=2) {
-	if (!context) return;
-	context?.beginPath();
-	context?.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
+function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:number, fillStyle:string|null=null, strokeStyle:string|null=null, strokeWidth:number=2) {
+	if (!ctx) return;
+	ctx.beginPath();
+	ctx.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
 	if (fillStyle) {
-		context.fillStyle = fillStyle;
-		context.fill();
+		ctx.fillStyle = fillStyle;
+		ctx.fill();
 	}
 	if (strokeStyle) {
-		context.lineWidth = strokeWidth;
-		context.strokeStyle = strokeStyle;
-		context.stroke();
+		ctx.lineWidth = strokeWidth;
+		ctx.strokeStyle = strokeStyle;
+		ctx.stroke();
 	}
 }
 
@@ -132,6 +133,12 @@ class Game {
 			circle[i].createLine(Game.circleDeg(Game.circleNum[Game.level][Game.stage], i));
 			circle[i].spawnBalls();
 		}
+
+		contextBack?.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+		for (const c of circle) {
+			c.draw();
+			c.line?.draw();
+		}
 	}
 
 	static end() {
@@ -208,8 +215,8 @@ class Circle {
 		this.maxBall = maxBall;
 	}
 	draw() {
-		drawCircle(0, 0, this.radius + BRadius, null, 'white');
-		drawCircle(0, 0, this.radius - BRadius, null, 'white');
+		drawCircle(contextBack, 0, 0, this.radius + BRadius, null, 'white');
+		drawCircle(contextBack, 0, 0, this.radius - BRadius, null, 'white');
 	}
 	static clockWiseX(radius:number, rad:number) {
 		return Math.sin(rad) * radius;
@@ -285,14 +292,14 @@ class Line {
 		this.y = Circle.clockWiseY(radius, degree * Math.PI / 180);
 	}
 	draw() {
-		if (!context) return;
-		context.beginPath();
-		context.rotate((this.degree - 90) * Math.PI / 180);
+		if (!contextBack) return;
+		contextBack.beginPath();
+		contextBack.rotate((this.degree - 90) * Math.PI / 180);
 		const w = LWidth * R, h = BRadius * 2 * R;
-		context.rect(this.radius * R - h/2, -w/2, h, w);
-		context.fillStyle = 'white';
-		context.fill();
-		context.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
+		contextBack.rect(this.radius * R - h/2, -w/2, h, w);
+		contextBack.fillStyle = 'white';
+		contextBack.fill();
+		contextBack.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 	}
 }
 
@@ -325,7 +332,7 @@ class Ball {
 	}
 	draw(time:number) {
 		this.updateXY(time);
-		drawCircle(this.x, this.y, BRadius, 'white');
+		drawCircle(context, this.x, this.y, BRadius, 'white');
 	}
 	reverseDir(time:number=performance.now()) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
@@ -342,7 +349,7 @@ class Ball {
 		if (delta >= 1)
 			removeItem(fadedBall, this);
 		else
-			drawCircle(this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
+			drawCircle(context, this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
 	}
 	startFade() {
 		fadedBall.push(this);
@@ -367,11 +374,10 @@ function animate(time:number) {
 	if (Game.active) {
 		context?.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
 		for (const c of circle) {
-			c.draw();
 			// c.detectBallBallCollide();
 			c.detectLineBallCollide();
-			c.line?.draw();
-			for (const b of c.ball) b.draw(time);
+			for (const b of c.ball)
+				b.draw(time);
 		}
 		for (const b of fadedBall)
 			b.fade(time);
