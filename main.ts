@@ -1,13 +1,19 @@
 const CANVAS = {w: 400, h: 400};
 const CRadius = [175, 155, 135];
-const BRadius = 10;
-const LWidth = 2;
-const R = window.devicePixelRatio;
+const BRadius:number = 10;
+const LWidth:number = 10;
+const MinBBGap:number = 9; // deg
+const MinBLGap:number = 60;  // deg
+const R:number = window.devicePixelRatio;
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
 const context = canvas.getContext('2d');
 const startBtn = document.getElementById('start-btn');
 const scoreTxt = document.getElementById('current-score');
 const highestTxt = document.getElementById('highest-score');
+
+const circle:Circle[] = new Array();
+const fadedBall:Ball[] = new Array();
+const fadeTime = 500; // ms
 
 function setCanvasSize() {
 	canvas.width = CANVAS.w * R;
@@ -34,7 +40,7 @@ function drawCircle(x:number, y:number, r:number, fillStyle:string|null=null, st
 
 /* Detect Circle-Circle Collision */
 function circleCirlceCollision(x1:number, y1:number, r1:number, x2:number, y2:number, r2:number) {
-	return ((r1 + r2) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
+	return ((r1 + r2 + 2) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
 function removeItem<T>(arr: Array<T>, value: T): Array<T> {
@@ -42,6 +48,10 @@ function removeItem<T>(arr: Array<T>, value: T): Array<T> {
 	if (index >= 0)
 		arr.splice(index, 1);
 	return arr;
+}
+
+function randRange(min:number, max:number) {
+	return Math.random() * (max - min + 1) + min;
 }
 
 class Game {
@@ -54,9 +64,11 @@ class Game {
 		this.score = 0;
 		this.active = true;
 		startBtn?.classList.add('hide');
-		for (const c of circle)
-			for (const b of c.ball)
-				b.startRotate();
+		while (circle.length > 0)
+			circle.pop();
+		circle.push(new Circle(CRadius[0]));
+		circle[0].createLine(0);
+		circle[0].spawnBalls();
 	}
 	static end() {
 		this.active = false;
@@ -79,6 +91,7 @@ class Circle {
 	public radius:number;
 	public line:Line[] = new Array();
 	public ball:Ball[] = new Array();
+	private clockwise = Boolean(Math.floor(Math.random() * 2));
 	constructor(radius:number) {
 		this.radius = radius;
 	}
@@ -95,16 +108,41 @@ class Circle {
 	createLine(degree:number) {
 		this.line.push(new Line(this.radius, degree));
 	}
-	createBall(degree:number, speed:number, clockwise:boolean) {
-		this.ball.push(new Ball(this.radius, degree, speed, clockwise));
+	spawnBalls() {
+		this.clockwise = !this.clockwise;
+		const speed = 0.125;
+		const num = Math.floor(randRange(1, 3));
+		let degs = new Array();
+		if (this.line.length == 1)
+			for (let i = 0; i < num; i++) {
+				let degree = 0;
+				rollLoop: while (true) {
+					degree = randRange(MinBBGap/2, 360-MinBBGap/2);
+					if (degree < this.line[0].degree + MinBLGap || degree > this.line[0].degree + 360 - MinBLGap)
+						continue rollLoop;
+					for (let d = 0; d < degs.length; d++)
+						if (degree + MinBBGap > degs[d] && degree - MinBBGap < degs[d])
+								continue rollLoop;
+					break rollLoop;
+				}
+				degs.push(degree);
+				this.ball.push(new Ball(this.radius, degree, speed, this.clockwise));
+			}
 	}
 	detectLineBallCollide() {
+		if (this.ball.length == 0) {
+			this.spawnBalls();
+			return;
+		}
+		let hasCollide = false;
 		for (const l of this.line)
 			for (const b of this.ball) {
 				if (circleCirlceCollision(l.x, l.y, LWidth / 2, b.x, b.y, BRadius)) {
 					b.collideLine.now = true;
+					hasCollide = true;
 					if (Game.pressed) {
 						Game.getScore();
+						b.startFade();
 						this.ball = removeItem(this.ball, b);
 					}
 				} else {
@@ -116,6 +154,12 @@ class Circle {
 				}
 				b.collideLine.last = b.collideLine.now;
 			}
+		if (Game.pressed) {
+			if (hasCollide)
+				Game.pressed = false;
+			else
+				Game.end();
+		}
 	}
 	detectBallBallCollide() {
 		for (const a of this.ball)
@@ -166,8 +210,10 @@ class Ball {
 		this.startDEG = startDeg;
 		this.speed = speed;
 		this.clockwise = cloclwise;
+		this.startTime = performance.now();
+		this.updateXY(this.startTime);
 	}
-	startRotate() {
+	restartRotate() {
 		this.startTime = performance.now();
 	}
 	updateXY(time:number) {
@@ -185,25 +231,37 @@ class Ball {
 		const y = Circle.clockWiseY(this.outRadius, rad);
 		const r = Math.acos(-y/this.outRadius) * 180 / Math.PI;
 		;this.startDEG = (x >= 0) ? r: 360 - r;
-		this.startRotate();
+		this.restartRotate();
 		this.clockwise = !this.clockwise;
+	}
+
+	fade(time:number) {
+		const delta = (time - this.startTime) / fadeTime;
+		if (delta >= 1)
+			removeItem(fadedBall, this);
+		else
+			drawCircle(this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
+	}
+	startFade() {
+		fadedBall.push(this);
+		this.startTime = performance.now();
 	}
 }
 
-const circle:Circle[] = new Array();
 window.onload = function () {
 	setCanvasSize();
 	circle.push(new Circle(CRadius[0]));
 	circle[0].createLine(0);
-	circle[0].createBall(Math.random() * 360, 0.1, true);
-	circle[0].createBall(Math.random() * 360, 0.1, false);
-	circle[0].createBall(Math.random() * 360, 0.1, true);
-	for (let i = 0; i < circle.length; i++)
-		circle[i].draw();
+	for (const c of circle) {
+		c.draw();
+		for (const l of c.line) l.draw();
+	}
 
 	if (startBtn) startBtn.onclick = () => Game.start();
-	document.onkeydown = () => {Game.pressed = true};
-	document.onkeyup = () => {Game.pressed = false};
+	document.onkeydown = () => {Game.pressed = true;};
+	document.onmousedown = () => {Game.pressed = true;};
+	document.onkeyup = () => {Game.pressed = false;};
+	document.onmouseup = () => {Game.pressed = false;};
 
 	animate(performance.now());
 }
@@ -218,6 +276,8 @@ function animate(time:number) {
 			for (const l of c.line) l.draw();
 			for (const b of c.ball) b.draw(time);
 		}
+		for (const b of fadedBall)
+			b.fade(time);
 	}
 	requestAnimationFrame(animate);
 }
