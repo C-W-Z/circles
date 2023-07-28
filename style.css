@@ -35,8 +35,8 @@ main {
 }
 
 canvas {
-	width: 400px;
-	height: 400px;
+	width: 350px;
+	height: 350px;
 }
 
 #scores {
@@ -46,15 +46,25 @@ canvas {
 	flex-direction: row;
 	align-self: center;
 	justify-content: space-between;
+    text-transform: uppercase;
 }
 #current-score::before {
 	content: 'score: ';
 }
 #highest-score::before {
-	content: 'highest score: ';
+	content: 'highest: ';
 }
 
-
+#btns:not(.hide) {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+#btns.hide {
+    display: none;
+}
 
 
 

@@ -7,7 +7,13 @@ const MinBLGap:number = 60;  // deg
 const R:number = window.devicePixelRatio;
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
 const context = canvas.getContext('2d');
-const startBtn = document.getElementById('start-btn');
+const startBtns = document.getElementById('btns');
+const startBtn = {
+	easy: document.getElementById('easy-btn'),
+	normal: document.getElementById('normal-btn'),
+	hard: document.getElementById('hard-btn'),
+	insane: document.getElementById('insane-btn'),
+}
 const scoreTxt = document.getElementById('current-score');
 const highestTxt = document.getElementById('highest-score');
 
@@ -18,8 +24,8 @@ const fadeTime = 500; // ms
 function setCanvasSize() {
 	canvas.width = CANVAS.w * R;
 	canvas.height = CANVAS.h * R;
-	canvas.style.width = CANVAS.w + 'px';
-	canvas.style.height = CANVAS.h + 'px';
+	//canvas.style.width = CANVAS.w + 'px';
+	//canvas.style.height = CANVAS.h + 'px';
 	context?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 }
 
@@ -54,28 +60,121 @@ function randRange(min:number, max:number) {
 	return Math.random() * (max - min + 1) + min;
 }
 
+enum LV {
+	easy,
+	normal,
+	hard,
+	insane
+}
+
 class Game {
 	static active = false;
 	static score = 0;
 	static highest = 0;
 	static pressed = false;
+	static hasCollide = false;
+	static passedBall = 0;
+	
+	static level = LV.easy;
+	static stage = 0;
+	static stageBall = [10, 25, 45, 70, 100, Infinity];
+	// circleNum[level][stage]
+	static circleNum = [
+		[1, 1, 1, 1, 2, 2],
+		[1, 1, 1, 1, 2, 2],
+		[1, 1, 1, 2, 2, 3],
+		[2, 2, 3, 3, 3, 3]
+	];
+	// circleDeg[circleNum][circleID]
+	static circleDeg = [
+		[],
+		[0],
+		[0, 180],
+		[0, 120, 240]
+	];
+	// maxBall[level][stage][circleID]
+	static maxBall = [
+		[[1], [2], [3], [5], [2, 1], [3, 2]],
+		[[2], [3], [5], [6], [2, 1], [4, 3]],
+		[[3], [4], [5], [2, 2], [3, 2], [3, 2, 1]],
+		[[3, 2], [4, 2], [4, 3, 2], [5, 3, 3], [5, 5, 3], [5, 5, 5]],
+	];
+	// speeds[level][stage][circleID]
+	static speeds = [
+		[[0.05]      , [0.075]     , [0.1]             , [0.12]           , [0.075, 0.05]    , [0.9, 0.07]       ],
+		[[0.06]      , [0.09]      , [0.12]            , [0.15]           , [0.1, 0.08]      , [0.12, 0.1]       ],
+		[[0.07]      , [0.12]      , [0.175]           , [0.09, 0.08]     , [0.11, 0.09]     , [0.1, 0.09, 0.08] ],
+		[[0.05, 0.04], [0.08, 0.07], [0.08, 0.07, 0.06], [0.1, 0.09, 0.08], [0.15, 0.12, 0.1], [0.15, 0.14, 0.13]]
+	];
+
 	constructor() {}
-	static start() {
-		this.score = 0;
+
+	static start(lvl:LV) {
 		this.active = true;
-		startBtn?.classList.add('hide');
+		startBtns?.classList.add('hide');
+		if (scoreTxt) scoreTxt.innerText = '0';
+
+		this.level = lvl;
+		this.passedBall = 0;
+		this.score = 0;
+		this.stage = -1;
+
+		this.nextStage();
+	}
+	static nextStage() {
+		this.stage += 1;
 		while (circle.length > 0)
 			circle.pop();
-		circle.push(new Circle(CRadius[0]));
-		circle[0].createLine(0);
-		circle[0].spawnBalls();
+		for (let i = 0; i < this.circleNum[this.level][this.stage]; i++) {
+			circle.push(new Circle(CRadius[i], this.speeds[this.level][this.stage][i], this.maxBall[this.level][this.stage][i]));
+			circle[i].createLine(this.circleDeg[this.circleNum[this.level][this.stage]][i]);
+			circle[i].spawnBalls();
+		}
 	}
+
 	static end() {
 		this.active = false;
-		startBtn?.classList.remove('hide');
+		startBtns?.classList.remove('hide');
 	}
+	
+	static checkEnd() {
+		if (Game.pressed) {
+			if (Game.hasCollide) {
+				Game.pressed = false;
+				Game.hasCollide = false;
+			} else Game.end();
+		}
+		if (this.passedBall >= this.stageBall[this.stage])
+			this.nextStage();
+	}
+
+	static scoreFunc() {
+		if (this.level === LV.easy)
+			return circle.length;
+		if (this.level === LV.normal) {
+			let res = 0;
+			for (const c of circle) 
+				res += c.ball.length;
+			return res * circle.length;
+		}
+		if (this.level === LV.hard) {
+			let res = 0;
+			for (const c of circle) 
+				res += c.ball.length;
+			return res * circle.length * (this.stage + 1);
+		}
+		if (this.level === LV.insane) {
+			let res = 1;
+			for (const c of circle) 
+				res *= c.ball.length;
+			return res * circle.length * (this.stage + 1);
+		}
+		return 1;
+	}
+
 	static getScore() {
-		this.score += 1;
+		this.passedBall += 1;
+		this.score += Game.scoreFunc();
 		if (scoreTxt) {
 			scoreTxt.innerText = String(this.score);
 			if (this.score > this.highest) {
@@ -91,9 +190,13 @@ class Circle {
 	public radius:number;
 	public line:Line[] = new Array();
 	public ball:Ball[] = new Array();
+	public speed = 0.05;
+	public maxBall = 2;
 	private clockwise = Boolean(Math.floor(Math.random() * 2));
-	constructor(radius:number) {
+	constructor(radius:number, speed:number=0.05, maxBall:number=2) {
 		this.radius = radius;
+		this.speed = speed;
+		this.maxBall = maxBall;
 	}
 	draw() {
 		drawCircle(0, 0, this.radius + BRadius, null, 'white');
@@ -110,8 +213,7 @@ class Circle {
 	}
 	spawnBalls() {
 		this.clockwise = !this.clockwise;
-		const speed = 0.125;
-		const num = Math.floor(randRange(1, 3));
+		const num = Math.floor(randRange(1, this.maxBall));
 		let degs = new Array();
 		if (this.line.length == 1)
 			for (let i = 0; i < num; i++) {
@@ -126,7 +228,7 @@ class Circle {
 					break rollLoop;
 				}
 				degs.push(degree);
-				this.ball.push(new Ball(this.radius, degree, speed, this.clockwise));
+				this.ball.push(new Ball(this.radius, degree, this.speed, this.clockwise));
 			}
 	}
 	detectLineBallCollide() {
@@ -134,12 +236,11 @@ class Circle {
 			this.spawnBalls();
 			return;
 		}
-		let hasCollide = false;
 		for (const l of this.line)
 			for (const b of this.ball) {
 				if (circleCirlceCollision(l.x, l.y, LWidth / 2, b.x, b.y, BRadius)) {
 					b.collideLine.now = true;
-					hasCollide = true;
+					Game.hasCollide = true;
 					if (Game.pressed) {
 						Game.getScore();
 						b.startFade();
@@ -154,12 +255,6 @@ class Circle {
 				}
 				b.collideLine.last = b.collideLine.now;
 			}
-		if (Game.pressed) {
-			if (hasCollide)
-				Game.pressed = false;
-			else
-				Game.end();
-		}
 	}
 	detectBallBallCollide() {
 		for (const a of this.ball)
@@ -256,13 +351,7 @@ window.onload = function () {
 		c.draw();
 		for (const l of c.line) l.draw();
 	}
-
-	if (startBtn) startBtn.onclick = () => Game.start();
-	document.onkeydown = () => {Game.pressed = true;};
-	document.onmousedown = () => {Game.pressed = true;};
-	document.onkeyup = () => {Game.pressed = false;};
-	document.onmouseup = () => {Game.pressed = false;};
-
+	setControl();
 	animate(performance.now());
 }
 
@@ -271,13 +360,27 @@ function animate(time:number) {
 		context?.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
 		for (const c of circle) {
 			c.draw();
-			c.detectBallBallCollide();
+			// c.detectBallBallCollide();
 			c.detectLineBallCollide();
 			for (const l of c.line) l.draw();
 			for (const b of c.ball) b.draw(time);
 		}
 		for (const b of fadedBall)
 			b.fade(time);
+		Game.checkEnd();
 	}
 	requestAnimationFrame(animate);
+}
+
+
+function setControl() {
+	if (startBtn.easy)   startBtn.easy.onclick   = () => Game.start(LV.easy);
+	if (startBtn.normal) startBtn.normal.onclick = () => Game.start(LV.normal);
+	if (startBtn.hard)   startBtn.hard.onclick   = () => Game.start(LV.hard);
+	if (startBtn.insane) startBtn.insane.onclick = () => Game.start(LV.insane);
+
+	document.onkeydown   = () => {Game.pressed = true;};
+	document.onmousedown = () => {Game.pressed = true;};
+	document.onkeyup     = () => {Game.pressed = false;};
+	document.onmouseup   = () => {Game.pressed = false;};
 }
