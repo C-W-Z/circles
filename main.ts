@@ -7,6 +7,7 @@ const MinBLGap:number = 60;  // deg
 const R:number = window.devicePixelRatio;
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
 const context = canvas.getContext('2d');
+const expTxt = document.getElementById('explain');
 const startBtns = document.getElementById('btns');
 const startBtn = {
 	easy: document.getElementById('easy-btn'),
@@ -112,6 +113,7 @@ class Game {
 	static start(lvl:LV) {
 		this.active = true;
 		startBtns?.classList.add('hide');
+		expTxt?.classList.remove('hide');
 		if (scoreTxt) scoreTxt.innerText = '0';
 
 		this.level = lvl;
@@ -135,6 +137,8 @@ class Game {
 	static end() {
 		this.active = false;
 		startBtns?.classList.remove('hide');
+		expTxt?.classList.add('hide');
+		localStorage.setItem('Highest', String(this.highest));
 	}
 	
 	static checkEnd() {
@@ -144,8 +148,12 @@ class Game {
 				Game.hasCollide = false;
 			} else Game.end();
 		}
-		if (this.passedBall >= this.stageBall[this.stage])
+		if (this.passedBall >= this.stageBall[this.stage]) {
+			for (const c of circle)
+				if (c.ball.length > 0)
+					return;
 			this.nextStage();
+		}
 	}
 
 	static scoreFunc() {
@@ -181,6 +189,7 @@ class Game {
 				this.highest = this.score;
 				if (highestTxt)
 					highestTxt.innerText = String(this.highest);
+				localStorage.setItem('Highest', String(this.highest));
 			}
 		}
 	}
@@ -352,6 +361,8 @@ window.onload = function () {
 		for (const l of c.line) l.draw();
 	}
 	setControl();
+	Game.highest = Number(localStorage.getItem('Highest'));
+	if (highestTxt) highestTxt.innerText = String(Game.highest);
 	animate(performance.now());
 }
 
