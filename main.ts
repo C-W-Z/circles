@@ -46,6 +46,7 @@ function drawCirclePath(ctx:CanvasRenderingContext2D|null, x:number, y:number, r
 	if (!ctx) return;
 	ctx.moveTo(x * R, y * R);
 	ctx.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
+	ctx.closePath();
 }
 
 function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:number, fillStyle:string='white') {
@@ -58,7 +59,7 @@ function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:num
 
 /* Detect Circle-Circle Collision */
 function circleCirlceCollision(x1:number, y1:number, r1:number, x2:number, y2:number, r2:number) {
-	return ((r1 + r2 + 4) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
+	return ((r1 + r2) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
 function removeItem<T>(arr: Array<T>, value: T): Array<T> {
@@ -179,7 +180,6 @@ class Game {
 					return;
 			Game.nextStage();
 		}
-		
 	}
 
 	static scoreFunc() {
@@ -262,20 +262,22 @@ class Circle {
 		if (this.line === null) return;
 		let res = false;
 		for (const b of this.ball) {
-			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2, b.x, b.y, BRadius)) {
+			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
 				res = true;
-				if (!b.collideLine.now) {
+				if (!b.fading && !b.collideLine.now) {
 					b.collideLine.now = true;
 					Game.hasCollide += 1;
 				}
-				if (auto || Game.pressed) {
+				if (!b.fading && (auto || Game.pressed)) {
 					Game.getScore();
 					b.startFade();
-					this.ball = removeItem(this.ball, b);
+					setTimeout(() => {
+						removeItem(this.ball, b);
+					}, fadeTime);
 				}
 			} else
 				b.collideLine.now = false;
-			if (b.collideLine.last && !b.collideLine.now) {
+			if (!b.fading && b.collideLine.last && !b.collideLine.now) {
 				Game.end();
 				b.drawRed();
 			}
@@ -327,6 +329,7 @@ class Ball {
 	public x = 0;
 	public y = 0;
 	public collideLine = {now:false, last:false};
+	public fading = false;
 	constructor(outRadius:number, startDeg:number, speed:number, cloclwise:boolean) {
 		this.outRadius = outRadius;
 		this.startDEG = startDeg;
@@ -335,15 +338,13 @@ class Ball {
 		this.startTime = performance.now();
 		this.updateXY(this.startTime);
 	}
-	restartRotate() {
-		this.startTime = performance.now();
-	}
 	updateXY(time:number) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
 		this.x = Circle.clockWiseX(this.outRadius, rad);
 		this.y = Circle.clockWiseY(this.outRadius, rad);
 	}
 	draw(time:number) {
+		if (this.fading) return;
 		this.updateXY(time);
 		drawCirclePath(context, this.x, this.y, BRadius);
 	}
@@ -352,11 +353,10 @@ class Ball {
 		const x = Circle.clockWiseX(this.outRadius, rad);
 		const y = Circle.clockWiseY(this.outRadius, rad);
 		const r = Math.acos(-y/this.outRadius) * 180 / Math.PI;
-		;this.startDEG = (x >= 0) ? r: 360 - r;
-		this.restartRotate();
+		this.startDEG = (x >= 0) ? r: 360 - r;
+		this.startTime = performance.now();
 		this.clockwise = !this.clockwise;
 	}
-
 	fade(time:number) {
 		const delta = (time - this.startTime) / fadeTime;
 		if (delta >= 1)
@@ -365,11 +365,12 @@ class Ball {
 			drawCircle(contextFront, this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
 	}
 	startFade() {
+		this.fading = true;
 		fadedBall.push(this);
 		this.startTime = performance.now();
 	}
-
 	drawRed() {
+		if (!this.fading)
 		requestAnimationFrame(()=>drawCircle(contextFront, this.x, this.y, BRadius, 'red'));
 	}
 }
