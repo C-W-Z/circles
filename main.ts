@@ -29,7 +29,8 @@ const scoreTxt = document.getElementById('current-score');
 const highestTxt = document.getElementById('highest-score');
 
 let circle:Circle[] = new Array();
-const fadedBall:Ball[] = new Array();
+const collideBall:Ball[] = new Array();
+const fadingBall:Ball[] = new Array();
 const fadeTime = 400; // ms
 
 let auto = false;
@@ -62,11 +63,10 @@ function circleCirlceCollision(x1:number, y1:number, r1:number, x2:number, y2:nu
 	return ((r1 + r2) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
-function removeItem<T>(arr: Array<T>, value: T): Array<T> {
+function removeItem<T>(arr: Array<T>, value: T) {
 	const index = arr.indexOf(value);
 	if (index >= 0)
 		arr.splice(index, 1);
-	return arr;
 }
 
 function randRange(min:number, max:number) {
@@ -85,7 +85,6 @@ class Game {
 	static score = 0;
 	static highest = 0;
 	static pressed = false;
-	static hasCollide = 0;
 	static passedBall = 0;
 	
 	static level = LV.easy;
@@ -130,7 +129,6 @@ class Game {
 		Game.score = 0;
 		Game.stage = -1;
 		Game.pressed = false;
-		Game.hasCollide = 0;
 
 		Game.nextStage();
 		animate(performance.now());
@@ -163,17 +161,6 @@ class Game {
 	}
 
 	static checkEnd() {
-		if (Game.pressed) {
-			if (Game.hasCollide > 0) {
-				Game.pressed = false;
-				Game.hasCollide -= 1;
-			} else {
-				Game.end();
-				for (const c of circle)
-					for (const b of c.ball)
-						b.drawRed();
-			}
-		}
 		if (Game.passedBall >= Game.stageBall[Game.stage]) {
 			for (const c of circle)
 				if (c.ball.length > 0)
@@ -260,21 +247,15 @@ class Circle {
 	}
 	detectLineBallCollide() {
 		if (this.line === null) return;
-		let res = false;
 		for (const b of this.ball) {
-			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
-				res = true;
-				if (!b.fading && !b.collideLine.now) {
-					b.collideLine.now = true;
-					Game.hasCollide += 1;
-				}
-				if (!b.fading && (auto || Game.pressed)) {
-					Game.getScore();
-					b.startFade();
-					setTimeout(() => {
-						removeItem(this.ball, b);
-					}, fadeTime);
-				}
+			if (!b.fading && !b.collideLine.now &&
+				circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
+				b.collideLine.now = true;
+				collideBall.push(b);
+				setTimeout(() => {
+					removeItem(this.ball, b);
+					removeItem(collideBall, b);
+				}, fadeTime);
 			} else
 				b.collideLine.now = false;
 			if (!b.fading && b.collideLine.last && !b.collideLine.now) {
@@ -283,7 +264,6 @@ class Circle {
 			}
 			b.collideLine.last = b.collideLine.now;
 		}
-		return res;
 	}
 	detectBallBallCollide() {
 		for (const a of this.ball)
@@ -360,13 +340,13 @@ class Ball {
 	fade(time:number) {
 		const delta = (time - this.startTime) / fadeTime;
 		if (delta >= 1)
-			removeItem(fadedBall, this);
+			removeItem(fadingBall, this);
 		else
 			drawCircle(contextFront, this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
 	}
 	startFade() {
 		this.fading = true;
-		fadedBall.push(this);
+		fadingBall.push(this);
 		this.startTime = performance.now();
 	}
 	drawRed() {
@@ -401,7 +381,7 @@ function animate(time:number) {
 			for (const b of c.ball)
 				b.draw(time);
 		}
-		for (const b of fadedBall)
+		for (const b of fadingBall)
 			b.fade(time);
 		Game.checkEnd();
 		context.fillStyle = 'white';
@@ -428,14 +408,18 @@ function setControl() {
 function pressFunc() {
 	Game.pressed = true;
 	if (!Game.active) return;
-	let noCollide = true;
-	for (const c of circle)
-		if (c.detectLineBallCollide())
-			noCollide = false;
-	if (noCollide) {
+	if (collideBall.length == 0) {
 		Game.end();
 		for (const c of circle)
 			for (const b of c.ball)
 				b.drawRed();
+	} else {
+		for (const b of collideBall) {
+			if (!b.fading) {
+				Game.getScore();
+				b.startFade();
+			}
+		}
+		collideBall.shift();
 	}
 }
