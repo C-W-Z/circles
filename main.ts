@@ -84,7 +84,6 @@ class Game {
     static active = false;
     static score = 0;
     static highest = 0;
-    static pressed = false;
     static passedBall = 0;
     static level = LV.easy;
     static stage = 0;
@@ -124,7 +123,6 @@ class Game {
         Game.passedBall = 0;
         Game.score = 0;
         Game.stage = -1;
-        Game.pressed = false;
 
         Game.nextStage();
         animate(performance.now());
@@ -380,6 +378,7 @@ function animate(time:number) {
     }
 }
 
+let touching = false;
 function setControl() {
     if (startBtn.easy)   startBtn.easy.onclick   = () => Game.start(LV.easy);
     if (startBtn.normal) startBtn.normal.onclick = () => Game.start(LV.normal);
@@ -388,14 +387,15 @@ function setControl() {
 
     document.onkeydown    = pressFunc;
     document.onmousedown  = pressFunc;
-    document.ontouchstart = pressFunc;
-    document.onkeyup      = () => {Game.pressed = false;};
-    document.onmouseup    = () => {Game.pressed = false;};
-    document.ontouchend   = () => {Game.pressed = false;};
+    document.ontouchstart = () => {
+        if (touching) return;
+        pressFunc(); 
+        touching = true;
+    };
+    document.ontouchend   = () => {touching = false;};
 }
 
 function pressFunc() {
-    Game.pressed = true;
     if (!Game.active) return;
     if (collideBall.length == 0) {
         Game.end();
