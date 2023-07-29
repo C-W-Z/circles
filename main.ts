@@ -28,7 +28,7 @@ const highestTxt = document.getElementById('highest-score');
 
 let circle:Circle[] = new Array();
 const fadedBall:Ball[] = new Array();
-const fadeTime = 500; // ms
+const fadeTime = 400; // ms
 
 let auto = false;
 
@@ -56,7 +56,7 @@ function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:num
 
 /* Detect Circle-Circle Collision */
 function circleCirlceCollision(x1:number, y1:number, r1:number, x2:number, y2:number, r2:number) {
-	return ((r1 + r2 + 2) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
+	return ((r1 + r2 + 4) ** 2 > (x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
 function removeItem<T>(arr: Array<T>, value: T): Array<T> {
@@ -126,9 +126,9 @@ class Game {
 		Game.passedBall = 0;
 		Game.score = 0;
 		Game.stage = -1;
+		Game.pressed = false;
 
 		Game.nextStage();
-
 		animate(performance.now());
 	}
 	static nextStage() {
@@ -158,10 +158,10 @@ class Game {
 	
 	static checkEnd() {
 		if (Game.pressed) {
-			if (Game.hasCollide) {
-				Game.pressed = false;
+			if (Game.hasCollide)
 				Game.hasCollide = false;
-			} else Game.end();
+			else if (fadedBall.length == 0)
+				Game.end();
 		}
 		if (Game.passedBall >= Game.stageBall[Game.stage]) {
 			for (const c of circle)
@@ -169,6 +169,7 @@ class Game {
 					return;
 			Game.nextStage();
 		}
+		Game.pressed = false;
 	}
 
 	static scoreFunc() {
@@ -250,7 +251,13 @@ class Circle {
 			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2, b.x, b.y, BRadius)) {
 				b.collideLine.now = true;
 				Game.hasCollide = true;
-				if (auto || Game.pressed) {
+				if (auto) {
+					requestAnimationFrame(()=>{
+						Game.getScore();
+						b.startFade();
+						this.ball = removeItem(this.ball, b);
+					});
+				} else if (Game.pressed) {
 					Game.getScore();
 					b.startFade();
 					this.ball = removeItem(this.ball, b);
@@ -395,7 +402,4 @@ function setControl() {
 	document.onkeydown    = () => {Game.pressed = true;};
 	document.onmousedown  = () => {Game.pressed = true;};
 	document.ontouchstart = () => {Game.pressed = true;};
-	document.onkeyup      = () => {Game.pressed = false;};
-	document.onmouseup    = () => {Game.pressed = false;};
-	document.ontouchend   = () => {Game.pressed = false;};
 }
