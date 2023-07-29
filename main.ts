@@ -239,14 +239,15 @@ class Circle {
     detectLineBallCollide() {
         if (this.line === null) return;
         for (const b of this.ball) {
-            if (!b.fading && !b.collideLine.now &&
-                circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
-                b.collideLine.now = true;
-                collideBall.push(b);
-                setTimeout(() => {
-                    removeItem(this.ball, b);
-                    removeItem(collideBall, b);
-                }, fadeTime);
+            if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
+                if (!b.fading && !b.collideLine.now) {
+					b.collideLine.now = true;
+					collideBall.push(b);
+					setTimeout(() => {
+						removeItem(this.ball, b);
+						removeItem(collideBall, b);
+					}, fadeTime);
+				}
             } else
                 b.collideLine.now = false;
             if (!b.fading && b.collideLine.last && !b.collideLine.now) {
