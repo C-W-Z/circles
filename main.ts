@@ -13,8 +13,10 @@ const MinBLGap:number = 45;  // deg
 const R:number = window.devicePixelRatio;
 const canvasBack = <HTMLCanvasElement>document.getElementById('canvas-back');
 const canvas = <HTMLCanvasElement>document.getElementById('canvas');
+const canvasFront = <HTMLCanvasElement>document.getElementById('canvas-front');
 const contextBack = canvasBack.getContext('2d');
 const context = canvas.getContext('2d');
+const contextFront = canvasFront.getContext('2d');
 const expTxt = document.getElementById('explain');
 const startBtns = document.getElementById('btns');
 const startBtn = {
@@ -33,25 +35,25 @@ const fadeTime = 400; // ms
 let auto = false;
 
 function setCanvasSize() {
-	canvasBack.width = canvas.width = CANVAS_SIZE * R;
-	canvasBack.height = canvas.height = CANVAS_SIZE * R;
+	canvasFront.width = canvasBack.width = canvas.width = CANVAS_SIZE * R;
+	canvasFront.height = canvasBack.height = canvas.height = CANVAS_SIZE * R;
 	context?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 	contextBack?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
+	contextFront?.setTransform(1, 0, 0, 1, canvas.width/2, canvas.height/2);
 }
 
-function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:number, fillStyle:string|null=null, strokeStyle:string|null=null, strokeWidth:number=2) {
+function drawCirclePath(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:number) {
+	if (!ctx) return;
+	ctx.moveTo(x * R, y * R);
+	ctx.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
+}
+
+function drawCircle(ctx:CanvasRenderingContext2D|null, x:number, y:number, r:number, fillStyle:string='white') {
 	if (!ctx) return;
 	ctx.beginPath();
 	ctx.arc(x * R, y * R, r * R, 0, 2 * Math.PI);
-	if (fillStyle) {
-		ctx.fillStyle = fillStyle;
-		ctx.fill();
-	}
-	if (strokeStyle) {
-		ctx.lineWidth = strokeWidth;
-		ctx.strokeStyle = strokeStyle;
-		ctx.stroke();
-	}
+	ctx.fillStyle = fillStyle;
+	ctx.fill();
 }
 
 /* Detect Circle-Circle Collision */
@@ -82,7 +84,7 @@ class Game {
 	static score = 0;
 	static highest = 0;
 	static pressed = false;
-	static hasCollide = false;
+	static hasCollide = 0;
 	static passedBall = 0;
 	
 	static level = LV.easy;
@@ -127,6 +129,7 @@ class Game {
 		Game.score = 0;
 		Game.stage = -1;
 		Game.pressed = false;
+		Game.hasCollide = 0;
 
 		Game.nextStage();
 		animate(performance.now());
@@ -151,17 +154,24 @@ class Game {
 
 	static end() {
 		Game.active = false;
-		startBtns?.classList.remove('hide');
-		expTxt?.classList.add('hide');
 		localStorage.setItem('Highest', String(Game.highest));
+		setTimeout(() => {
+			startBtns?.classList.remove('hide');
+			expTxt?.classList.add('hide');
+		}, 500);
 	}
-	
+
 	static checkEnd() {
 		if (Game.pressed) {
-			if (Game.hasCollide)
-				Game.hasCollide = false;
-			else if (fadedBall.length == 0)
+			if (Game.hasCollide > 0) {
+				Game.pressed = false;
+				Game.hasCollide -= 1;
+			} else {
 				Game.end();
+				for (const c of circle)
+					for (const b of c.ball)
+						b.drawRed();
+			}
 		}
 		if (Game.passedBall >= Game.stageBall[Game.stage]) {
 			for (const c of circle)
@@ -169,7 +179,7 @@ class Game {
 					return;
 			Game.nextStage();
 		}
-		Game.pressed = false;
+		
 	}
 
 	static scoreFunc() {
@@ -207,8 +217,15 @@ class Circle {
 		this.maxBall = maxBall;
 	}
 	draw() {
-		drawCircle(contextBack, 0, 0, this.radius + BRadius, null, 'white');
-		drawCircle(contextBack, 0, 0, this.radius - BRadius, null, 'white');
+		if (!contextBack) return;
+		contextBack.lineWidth = 2;
+		contextBack.strokeStyle = 'white';
+		contextBack.beginPath();
+		contextBack.arc(0, 0, (this.radius + BRadius) * R, 0, 2 * Math.PI);
+		contextBack.stroke();
+		contextBack.beginPath();
+		contextBack.arc(0, 0, (this.radius - BRadius) * R, 0, 2 * Math.PI);
+		contextBack.stroke();
 	}
 	static clockWiseX(radius:number, rad:number) {
 		return Math.sin(rad) * radius;
@@ -242,35 +259,29 @@ class Circle {
 		}
 	}
 	detectLineBallCollide() {
-		if (this.ball.length == 0 && Game.passedBall < Game.stageBall[Game.stage]) {
-			this.spawnBalls();
-			return;
-		}
 		if (this.line === null) return;
+		let res = false;
 		for (const b of this.ball) {
 			if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2, b.x, b.y, BRadius)) {
-				b.collideLine.now = true;
-				Game.hasCollide = true;
-				if (auto) {
-					requestAnimationFrame(()=>{
-						Game.getScore();
-						b.startFade();
-						this.ball = removeItem(this.ball, b);
-					});
-				} else if (Game.pressed) {
+				res = true;
+				if (!b.collideLine.now) {
+					b.collideLine.now = true;
+					Game.hasCollide += 1;
+				}
+				if (auto || Game.pressed) {
 					Game.getScore();
 					b.startFade();
 					this.ball = removeItem(this.ball, b);
 				}
-			} else {
+			} else
 				b.collideLine.now = false;
-			}
 			if (b.collideLine.last && !b.collideLine.now) {
 				Game.end();
 				b.drawRed();
 			}
 			b.collideLine.last = b.collideLine.now;
 		}
+		return res;
 	}
 	detectBallBallCollide() {
 		for (const a of this.ball)
@@ -334,7 +345,7 @@ class Ball {
 	}
 	draw(time:number) {
 		this.updateXY(time);
-		drawCircle(context, this.x, this.y, BRadius, 'white');
+		drawCirclePath(context, this.x, this.y, BRadius);
 	}
 	reverseDir(time:number=performance.now()) {
 		const rad = (this.startDEG + (this.clockwise ? 1 : -1) * (time - this.startTime) * this.speed) * Math.PI / 180;
@@ -351,7 +362,7 @@ class Ball {
 		if (delta >= 1)
 			removeItem(fadedBall, this);
 		else
-			drawCircle(context, this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
+			drawCircle(contextFront, this.x, this.y, BRadius * (1 + delta), `rgba(255,255,255,${1 - delta})`);
 	}
 	startFade() {
 		fadedBall.push(this);
@@ -359,7 +370,7 @@ class Ball {
 	}
 
 	drawRed() {
-		requestAnimationFrame(()=>drawCircle(context, this.x, this.y, BRadius, 'red'));
+		requestAnimationFrame(()=>drawCircle(contextFront, this.x, this.y, BRadius, 'red'));
 	}
 }
 
@@ -377,17 +388,23 @@ window.onload = function () {
 }
 
 function animate(time:number) {
-	if (Game.active) {
-		context?.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+	if (Game.active && context && contextFront) {
+		context.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+		contextFront.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+		context.beginPath();
 		for (const c of circle) {
+			if (c.ball.length == 0 && Game.passedBall < Game.stageBall[Game.stage])
+				c.spawnBalls();
+			else c.detectLineBallCollide();
 			// c.detectBallBallCollide();
-			c.detectLineBallCollide();
 			for (const b of c.ball)
 				b.draw(time);
 		}
 		for (const b of fadedBall)
 			b.fade(time);
 		Game.checkEnd();
+		context.fillStyle = 'white';
+		context.fill();
 		requestAnimationFrame(animate);
 	}
 }
@@ -399,7 +416,25 @@ function setControl() {
 	if (startBtn.hard)   startBtn.hard.onclick   = () => Game.start(LV.hard);
 	if (startBtn.insane) startBtn.insane.onclick = () => Game.start(LV.insane);
 
-	document.onkeydown    = () => {Game.pressed = true;};
-	document.onmousedown  = () => {Game.pressed = true;};
-	document.ontouchstart = () => {Game.pressed = true;};
+	document.onkeydown    = pressFunc;
+	document.onmousedown  = pressFunc;
+	document.ontouchstart = pressFunc;
+	document.onkeyup      = () => {Game.pressed = false;};
+	document.onmouseup    = () => {Game.pressed = false;};
+	document.ontouchend   = () => {Game.pressed = false;};
+}
+
+function pressFunc() {
+	Game.pressed = true;
+	if (!Game.active) return;
+	let noCollide = true;
+	for (const c of circle)
+		if (c.detectLineBallCollide())
+			noCollide = false;
+	if (noCollide) {
+		Game.end();
+		for (const c of circle)
+			for (const b of c.ball)
+				b.drawRed();
+	}
 }
