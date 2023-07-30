@@ -378,6 +378,7 @@ function animate(time:number) {
     }
 }
 
+const canTouch = ('ontouchstart' in window);
 let touching = false;
 function setControl() {
     if (startBtn.easy)   startBtn.easy.onclick   = () => Game.start(LV.easy);
@@ -385,13 +386,26 @@ function setControl() {
     if (startBtn.hard)   startBtn.hard.onclick   = () => Game.start(LV.hard);
     if (startBtn.insane) startBtn.insane.onclick = () => Game.start(LV.insane);
 
-    document.onkeydown = pressFunc;
-    document.onmousedown = document.ontouchstart = () => {
-        if (touching) return;
-        touching = true;
-        pressFunc(); 
-    };
-    document.onmouseup = document.ontouchend = () => {touching = false;};
+    if (canTouch) {
+        window.ontouchstart = () => {
+            if (touching) return;
+            touching = true;
+            console.log('touch');
+            pressFunc();
+        };
+        window.ontouchend = () => {
+            touching = false;
+        };
+        window.onmousedown = ()=>{console.log('mouse')};
+    } else {
+        window.onmousedown = ()=>{pressFunc(), console.log('mouse')};
+    }
+    window.onkeydown = pressFunc;
+
+    console.log('ontouchstart', 'ontouchstart' in window);
+    console.log('onmousedown', 'onmousedown' in window);
+    console.log('onkeydown', 'onkeydown' in window);
+    console.log('navigator.maxTouchPoints', navigator.maxTouchPoints);
 }
 
 function pressFunc() {
