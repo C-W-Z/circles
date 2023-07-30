@@ -42,12 +42,14 @@ main {
 
 #canvases {
     position: relative;
-    width: 350px;
-	height: 350px;
+    max-width: 350px;
+    max-height: 350px;
+    width: calc(min(85vw, 85vh));
+	height: calc(min(85vw, 85vh));
 }
 canvas {
-	width: 350px;
-	height: 350px;
+	width: 100%;
+	height: 100%;
     position: absolute;
     left: 0;
     top: 0;

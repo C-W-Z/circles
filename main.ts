@@ -145,7 +145,7 @@ class Game {
     }
     static end() {
         Game.active = false;
-        localStorage.setItem('Highest', String(Game.highest));
+        localStorage.setItem('CIRCLES-Highest', String(Game.highest));
         setTimeout(() => {
             startBtns?.classList.remove('hide');
             expTxt?.classList.add('hide');
@@ -174,7 +174,7 @@ class Game {
                 Game.highest = Game.score;
                 if (highestTxt)
                     highestTxt.innerText = String(Game.highest);
-                localStorage.setItem('Highest', String(Game.highest));
+                localStorage.setItem('CIRCLES-Highest', String(Game.highest));
             }
         }
     }
@@ -352,7 +352,7 @@ window.onload = function () {
         c.line?.draw();
     }
     setControl();
-    Game.highest = Number(localStorage.getItem('Highest'));
+    Game.highest = Number(localStorage.getItem('CIRCLES-Highest'));
     if (highestTxt) highestTxt.innerText = String(Game.highest);
 }
 
@@ -378,39 +378,16 @@ function animate(time:number) {
     }
 }
 
-const canTouch = ('ontouchstart' in window);
-let touching = false;
 function setControl() {
     if (startBtn.easy)   startBtn.easy.onclick   = () => Game.start(LV.easy);
     if (startBtn.normal) startBtn.normal.onclick = () => Game.start(LV.normal);
     if (startBtn.hard)   startBtn.hard.onclick   = () => Game.start(LV.hard);
     if (startBtn.insane) startBtn.insane.onclick = () => Game.start(LV.insane);
 
-    if (canTouch) {
-        window.ontouchstart = () => {
-            if (touching) return;
-            touching = true;
-            console.log('touch');
-            pressFunc();
-        };
-        window.ontouchend = () => {
-            touching = false;
-        };
-        window.onmousedown = ()=>{
-            console.log('ontouchstart', 'ontouchstart' in window);
-            console.log('onmousedown', 'onmousedown' in window);
-            console.log('onkeydown', 'onkeydown' in window);
-            console.log('navigator.maxTouchPoints', navigator.maxTouchPoints);
-        };
-    } else {
-        window.onmousedown = ()=>{pressFunc(), console.log('mouse')};
-    }
+    if ('ontouchstart' in window)
+        window.ontouchstart = pressFunc;
+    else window.onmousedown = pressFunc;
     window.onkeydown = pressFunc;
-
-    console.log('ontouchstart', 'ontouchstart' in window);
-    console.log('onmousedown', 'onmousedown' in window);
-    console.log('onkeydown', 'onkeydown' in window);
-    console.log('navigator.maxTouchPoints', navigator.maxTouchPoints);
 }
 
 function pressFunc() {
