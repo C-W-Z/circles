@@ -396,7 +396,12 @@ function setControl() {
         window.ontouchend = () => {
             touching = false;
         };
-        window.onmousedown = ()=>{console.log('mouse')};
+        window.onmousedown = ()=>{
+            console.log('ontouchstart', 'ontouchstart' in window);
+            console.log('onmousedown', 'onmousedown' in window);
+            console.log('onkeydown', 'onkeydown' in window);
+            console.log('navigator.maxTouchPoints', navigator.maxTouchPoints);
+        };
     } else {
         window.onmousedown = ()=>{pressFunc(), console.log('mouse')};
     }
