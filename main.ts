@@ -96,7 +96,7 @@ class Game {
         [2,2,3,3,4,4,5,5,6,6,6]
     ];
     // circleDeg[circleNum][circleID]
-    static circleDeg(circleNum:number,i:number) {
+    static circleDeg(circleNum:number, i:number) {
         return 360 * i / circleNum;
     }
     // maxBall[level][stage][circleID]
@@ -240,11 +240,17 @@ class Circle {
             if (circleCirlceCollision(this.line.x, this.line.y, LWidth / 2 + 4, b.x, b.y, BRadius)) {
                 if (!b.fading && !b.collideLine.now) {
 					b.collideLine.now = true;
-					collideBall.push(b);
-					setTimeout(() => {
-						removeItem(this.ball, b);
-						removeItem(collideBall, b);
-					}, fadeTime);
+					if (auto) {
+                        removeItem(this.ball, b);
+                        Game.getScore();
+                        b.startFade();
+                    } else {
+                        collideBall.push(b);
+                        setTimeout(() => {
+                            removeItem(this.ball, b);
+                            removeItem(collideBall, b);
+                        }, fadeTime);
+                    }
 				}
             } else
                 b.collideLine.now = false;
