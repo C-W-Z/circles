@@ -44,8 +44,8 @@ main {
     position: relative;
     max-width: 350px;
     max-height: 350px;
-    width: calc(min(85vw, 85vh));
-	height: calc(min(85vw, 85vh));
+    width: calc(min(85dvw, 85dvh));
+	height: calc(min(85dvw, 85dvh));
 }
 canvas {
 	width: 100%;
